@@ -2,8 +2,8 @@ name: Hotstar Project CI/CD - Docker + ECR + ECS Deploy
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches: [ "main" ]        # Runs on every push to main
+  workflow_dispatch:             # Allows manual trigger from GitHub Actions
 
 jobs:
   build-and-deploy:
@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1 - Clone the repo
+      # Step 1️⃣ - Checkout repository code
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Step 2 - Configure AWS credentials
+      # Step 2️⃣ - Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -23,36 +23,37 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Step 3 - Login to ECR
+      # Step 3️⃣ - Login to Amazon ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Step 4 - Build, Tag, and Push Docker image
-      - name: Build, Tag, and Push Docker image to ECR
+      # Step 4️⃣ - Build, Tag, and Push Docker image to ECR
+      - name: Build, Tag, and Push Docker image
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: latest
         run: |
-          IMAGE_TAG=latest
+          echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "Pushing image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # Step 5 - Update ECS Task Definition with new image
-      - name: Fill in the new image ID in the ECS task definition
-        id: task-def
+      # Step 5️⃣ - Update ECS Task Definition with new image
+      - name: Render new ECS task definition
+        id: render-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: ecs-task-def.json
           container-name: hotstar-container
           image: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
-      # Step 6 - Deploy new version to ECS Fargate
-      - name: Deploy to ECS
+      # Step 6️⃣ - Deploy the updated task definition to ECS Fargate
+      - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
           service: hotstar-service
           cluster: hotstar-cluster
           wait-for-service-stability: true
-
