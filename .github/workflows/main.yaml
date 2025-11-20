@@ -54,7 +54,7 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-task-def.outputs.task-definition }}
-          service: hotstar-container-service-hlpdb67x
-          cluster: celebrated-fox-ruhgb8
+          service: My-Cluster
+          cluster: ECS-SERVICE
 
           wait-for-service-stability: true
