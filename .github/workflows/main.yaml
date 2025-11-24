@@ -55,6 +55,6 @@ jobs:
         with:
           task-definition: ${{ steps.render-task-def.outputs.task-definition }}
           service: my-service
-          cluster: project4
+          cluster: dev-pro
 
           wait-for-service-stability: true
