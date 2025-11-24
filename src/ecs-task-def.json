@@ -9,7 +9,7 @@
   "containerDefinitions": [
     {
       "name": "hotstar-container",
-      "image": "074478993755.dkr.ecr.us-west-1.amazonaws.com/devops",
+      "image": "074478993755.dkr.ecr.eu-west-1.amazonaws.com/devops",
       "portMappings": [
         { "containerPort": 80, "hostPort": 80 }
       ]
