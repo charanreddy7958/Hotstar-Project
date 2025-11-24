@@ -1,0 +1,60 @@
+name: Hotstar Project CI/CD - Docker + ECR + ECS Deploy
+
+on:
+  push:
+    branches: [ "master" ]        # Runs on every push to main
+  workflow_dispatch:             # Allows manual trigger from GitHub Actions
+
+jobs:
+  build-and-deploy:
+    name: Build, Push to ECR & Deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1️⃣ - Checkout repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2️⃣ - Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Step 3️⃣ - Login to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step 4️⃣ - Build, Tag, and Push Docker image to ECR
+      - name: Build, Tag, and Push Docker image
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: latest
+        run: |
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # Step 5️⃣ - Update ECS Task Definition with new image
+      - name: Render new ECS task definition
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: src/ecs-task-def.json
+          container-name: hotstar-container
+          image: ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+      # Step 6️⃣ - Deploy the updated task definition to ECS Fargate
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: dev-task-service-f35pzt73
+          cluster: dev-pro
+
+          wait-for-service-stability: true
